@@ -44,6 +44,7 @@ dependencies {
     // Spring Boot
     implementation("org.springframework.boot:spring-boot-starter")
     implementation("org.springframework.boot:spring-boot-starter-test")
+    implementation("org.springframework.boot:spring-boot-starter-jdbc")
 
     // Camunda Platform 7
     compileOnly("org.camunda.bpm.springboot:camunda-bpm-spring-boot-starter:7.20.0")
