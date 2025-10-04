@@ -45,8 +45,19 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter")
     implementation("org.springframework.boot:spring-boot-starter-test")
 
-    // Camunda Platform 8
-    implementation("io.camunda:camunda-bpm-spring-boot-starter:7.20.0")
+    // Camunda Platform 7
+    compileOnly("org.camunda.bpm.springboot:camunda-bpm-spring-boot-starter:7.20.0")
+
+    // PostgreSQL Driver
+    testImplementation("org.postgresql:postgresql:42.7.1")
+
+    // WireMock
+    testImplementation("org.wiremock:wiremock:3.3.1")
+
+    // Testcontainers
+    testImplementation("org.testcontainers:testcontainers:1.19.3")
+    testImplementation("org.testcontainers:postgresql:1.19.3")
+    testImplementation("org.testcontainers:junit-jupiter:1.19.3")
 
     // JUnit 5
     testImplementation("org.junit.jupiter:junit-jupiter-api")
