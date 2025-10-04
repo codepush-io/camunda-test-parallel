@@ -1,14 +1,14 @@
 # Git Rules
 
-Guidelines for Git usage, commit practices, and version control workflow in Valla projects.
+Guidelines for Git usage, commit practices, and version control workflow in codepush projects.
 
 ## Context
 
 Rules governing Git workflow, commit message formatting, and repository management practices.
 
-*Applies to:* All Valla projects and repositories
+*Applies to:* All codepush projects and repositories
 *Level:* Operational - day-to-day development practices
-*Audience:* All contributions made to Valla projects
+*Audience:* All contributions made to codepush projects
 
 ## Core Principles
 
