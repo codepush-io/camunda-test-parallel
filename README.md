@@ -16,7 +16,7 @@ Spring Boot integration tests with embedded Camunda runtime typically cannot run
 - **Resource Isolation**: Automatic isolation of database connections and process engine instances
 - **Spring Boot Integration**: Seamless integration with Spring Boot test infrastructure
 - **Easy Configuration**: Minimal configuration required to enable parallel testing
-- **Camunda 8 Support**: Built for modern Camunda Platform 8
+- **Camunda 7 Support**: Built for Camunda BPM Platform 7 embedded in Spring Boot
 
 > **Note**: This library is currently in early development. Features are being actively implemented.
 
@@ -24,7 +24,7 @@ Spring Boot integration tests with embedded Camunda runtime typically cannot run
 
 - **Java 21+**: Takes advantage of modern Java features and virtual threads
 - **Spring Boot 3.x**: Compatible with Spring Boot 3.x series
-- **Camunda 8.x**: Designed for Camunda Platform 8
+- **Camunda 7.x**: Designed for Camunda BPM Platform 7 embedded in Spring Boot
 - **Gradle 8+** or **Maven 3.6+**: For building projects using this library
 
 ## Getting Started
