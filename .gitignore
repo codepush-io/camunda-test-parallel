@@ -1,0 +1,43 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+*.log
+hs_err_pid*
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
+.settings/
+.project
+.classpath
+bin/
+
+# MacOS
+.DS_Store
+
+# DevContainer
+.devcontainer/.env
+
+# Test results
+**/test-results/
+**/test-output/
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~

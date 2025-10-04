@@ -1,0 +1,35 @@
+{
+  "name": "Camunda Parallel Test - Java 21",
+  "image": "mcr.microsoft.com/devcontainers/java:21",
+
+  "features": {
+    "ghcr.io/devcontainers/features/gradle:1": {
+      "version": "latest"
+    },
+    "ghcr.io/devcontainers/features/git:1": {
+      "version": "latest"
+    }
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "vscjava.vscode-java-pack",
+        "vscjava.vscode-gradle",
+        "vscjava.vscode-java-test",
+        "vscjava.vscode-java-debug",
+        "redhat.java",
+        "EditorConfig.EditorConfig"
+      ],
+      "settings": {
+        "java.configuration.updateBuildConfiguration": "automatic",
+        "java.saveActions.organizeImports": true,
+        "editor.formatOnSave": true
+      }
+    }
+  },
+
+  "postCreateCommand": "./gradlew build --no-daemon",
+
+  "remoteUser": "vscode"
+}
