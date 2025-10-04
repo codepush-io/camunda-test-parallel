@@ -9,17 +9,20 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Simple implementation of dynamic port allocation using ephemeral port range.
+ * Simple implementation of dynamic port allocation using OS dynamic port range.
  *
- * <p>Allocates ports in the ephemeral range (49152-65535) by attempting to bind
- * to available ports. Thread-safe for concurrent access.</p>
+ * <p>Allocates ports using the operating system's dynamic port allocation mechanism
+ * by binding to port 0. The actual range varies by OS:</p>
+ * <ul>
+ *   <li>Linux/Mac: typically 32768-60999</li>
+ *   <li>Windows: typically 49152-65535</li>
+ * </ul>
  *
- * <p>Ports are tracked to prevent double allocation until explicitly released.</p>
+ * <p>Thread-safe for concurrent access. Ports are tracked to prevent double
+ * allocation until explicitly released.</p>
  */
 public final class SimpleDynamicPortAllocator implements DynamicPortAllocator {
 
-    private static final int EPHEMERAL_PORT_START = 49152;
-    private static final int EPHEMERAL_PORT_END = 65535;
     private static final int MAX_ALLOCATION_ATTEMPTS = 100;
 
     private final Set<Integer> allocatedPorts = ConcurrentHashMap.newKeySet();
@@ -62,26 +65,9 @@ public final class SimpleDynamicPortAllocator implements DynamicPortAllocator {
     private int findAvailablePort() {
         try (ServerSocket socket = new ServerSocket(0)) {
             socket.setReuseAddress(true);
-            int port = socket.getLocalPort();
-
-            // Verify port is in ephemeral range
-            if (port >= EPHEMERAL_PORT_START && port <= EPHEMERAL_PORT_END) {
-                return port;
-            }
-
-            // If not in ephemeral range, try again with explicit binding
-            return findAvailablePortInRange();
-
+            return socket.getLocalPort();
         } catch (IOException e) {
             throw new PortAllocationException("Failed to find available port", e);
-        }
-    }
-
-    private int findAvailablePortInRange() throws IOException {
-        // Try to bind to a random port in ephemeral range
-        try (ServerSocket socket = new ServerSocket(0)) {
-            socket.setReuseAddress(true);
-            return socket.getLocalPort();
         }
     }
 }
