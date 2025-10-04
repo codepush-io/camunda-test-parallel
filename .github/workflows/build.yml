@@ -32,19 +32,3 @@ jobs:
 
     - name: Run integration tests
       run: ./gradlew integrationTest --no-daemon
-
-    - name: Upload build artifacts
-      if: success()
-      uses: actions/upload-artifact@v4
-      with:
-        name: build-artifacts
-        path: build/libs/
-
-    - name: Upload test results
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: test-results
-        path: |
-          build/reports/tests/
-          build/test-results/
