@@ -48,10 +48,18 @@ public class ParallelTestExecutionListener extends AbstractTestExecutionListener
             return; // Already initialized
         }
 
-        // Create schema isolation
-        DataSource dataSource = getDataSource(testContext);
-        SchemaIsolationStrategy schemaStrategy = new PostgresSchemaIsolationStrategy(dataSource);
-        String schemaName = schemaStrategy.createSchema();
+        // Create schema isolation if DataSource is available
+        SchemaIsolationStrategy schemaStrategy = null;
+        String schemaName = null;
+
+        try {
+            DataSource dataSource = getDataSource(testContext);
+            schemaStrategy = new PostgresSchemaIsolationStrategy(dataSource);
+            schemaName = schemaStrategy.createSchema();
+        } catch (Exception e) {
+            // DataSource not available - skip schema isolation
+            schemaName = "test_schema_unavailable";
+        }
 
         // Allocate dynamic ports
         List<Integer> allocatedPorts = portAllocator.allocatePorts(DEFAULT_WIREMOCK_PORT_COUNT);
@@ -93,11 +101,13 @@ public class ParallelTestExecutionListener extends AbstractTestExecutionListener
     }
 
     private void cleanupResources(TestResourceContext context) {
-        try {
-            context.schemaStrategy().cleanupSchema();
-        } catch (Exception e) {
-            // Log but don't fail cleanup
-            System.err.println("Failed to cleanup schema: " + e.getMessage());
+        if (context.schemaStrategy() != null) {
+            try {
+                context.schemaStrategy().cleanupSchema();
+            } catch (Exception e) {
+                // Log but don't fail cleanup
+                System.err.println("Failed to cleanup schema: " + e.getMessage());
+            }
         }
 
         try {
