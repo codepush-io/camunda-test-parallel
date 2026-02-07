@@ -27,113 +27,203 @@ Spring Boot integration tests with embedded Camunda runtime typically cannot run
 - **Camunda 7.x**: Designed for Camunda BPM Platform 7 embedded in Spring Boot
 - **Gradle 8+** or **Maven 3.6+**: For building projects using this library
 
-## Getting Started
+## Quick Start
+
+### 1. Add the dependency
+
+```kotlin
+// build.gradle.kts
+dependencies {
+    testImplementation("io.codepush.testing:camunda-test-parallel:0.1.0-SNAPSHOT")
+}
+```
+
+### 2. Replace `@SpringBootTest` with `@ParallelFunctionalTest`
+
+```java
+@ParallelFunctionalTest
+class OrderProcessTest {
+
+    @Autowired
+    private RuntimeService runtimeService;
+
+    @Value("${wiremock.port.0}")
+    private int paymentServicePort;
+
+    @Test
+    void shouldProcessOrder() {
+        // Runs in isolated schema (camunda_test_<uuid>)
+        // WireMock port dynamically allocated — no conflicts
+        ProcessInstance instance = runtimeService
+            .startProcessInstanceByKey("orderProcess");
+
+        assertThat(instance).isNotNull();
+    }
+}
+```
+
+That's it. Each test class automatically gets:
+- A unique PostgreSQL schema (`camunda_test_<uuid>`) created before tests and dropped after
+- 3 dynamically allocated ports available as `${wiremock.port.0}`, `${wiremock.port.1}`, `${wiremock.port.2}`
+- Spring Boot test context with `RANDOM_PORT` web environment and `test` profile
+
+### 3. Enable JUnit parallel execution
+
+Add `src/test/resources/junit-platform.properties`:
+
+```properties
+junit.jupiter.execution.parallel.enabled=true
+junit.jupiter.execution.parallel.mode.default=concurrent
+junit.jupiter.execution.parallel.mode.classes.default=concurrent
+```
+
+### 4. Configure your test database
+
+```yaml
+# src/test/resources/application-test.yml
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/camunda_test
+    username: test_user
+    password: test_password
+```
+
+The library creates and drops isolated schemas automatically — your PostgreSQL user just needs `CREATE` permission on the database.
+
+## Configuration
+
+### Custom properties
+
+Pass additional Spring properties just like `@SpringBootTest`:
+
+```java
+@ParallelFunctionalTest(
+    properties = {
+        "custom.feature.enabled=true",
+        "custom.timeout=5000"
+    }
+)
+class CustomFeatureTest { }
+```
+
+### WireMock port count
+
+Control how many ports are allocated per test class (default is 3):
+
+```java
+// Allocate 5 ports: ${wiremock.port.0} through ${wiremock.port.4}
+@ParallelFunctionalTest(wiremockPorts = 5)
+class ManyExternalServicesTest { }
+
+// Disable port allocation entirely
+@ParallelFunctionalTest(wiremockPorts = 0)
+class NoDependenciesTest { }
+```
+
+### Using allocated ports with WireMock
+
+```java
+@ParallelFunctionalTest
+class PaymentServiceTest {
+
+    @Value("${wiremock.port.0}")
+    private int paymentPort;
+
+    private WireMockServer paymentMock;
+
+    @BeforeEach
+    void setUp() {
+        paymentMock = new WireMockServer(paymentPort);
+        paymentMock.start();
+    }
+
+    @AfterEach
+    void tearDown() {
+        paymentMock.stop();
+    }
+
+    @Test
+    void shouldCallPaymentService() {
+        paymentMock.stubFor(post("/charge")
+            .willReturn(ok()));
+        // test logic...
+    }
+}
+```
+
+Or in your application config:
+
+```yaml
+# application-test.yml
+payment-service:
+  base-url: http://localhost:${wiremock.port.0}
+notification-service:
+  base-url: http://localhost:${wiremock.port.1}
+```
+
+### Accessing the isolated schema name
+
+```java
+@Value("${spring.datasource.schema}")
+private String schemaName;  // e.g. "camunda_test_a1b2c3d4-..."
+```
+
+## How It Works
+
+1. **Before each test class**, the `ParallelTestExecutionListener`:
+   - Creates a unique PostgreSQL schema (`camunda_test_<uuid>`)
+   - Allocates dynamic ports by binding to port 0
+   - Injects schema name and ports into the test's Spring `ApplicationContext` via `TestPropertyValues` (context-isolated, not global)
+
+2. **After each test class**, the listener:
+   - Drops the schema (`DROP SCHEMA ... CASCADE`)
+   - Releases the allocated ports
+
+All state is per-`ApplicationContext` — no `System.setProperty` pollution, no cross-test interference.
+
+## Migration from `@FunctionalTest` or `@SpringBootTest`
+
+```java
+// Before
+@SpringBootTest
+class MyTest { }
+
+// After
+@ParallelFunctionalTest
+class MyTest { }
+```
+
+Existing properties and configuration are preserved. The annotation composes `@SpringBootTest(webEnvironment = RANDOM_PORT)`, `@EnableAutoConfiguration`, and `@ActiveProfiles("test")`.
+
+## Development Setup
 
 ### Using DevContainers (Recommended)
 
-The fastest way to get started with development is using DevContainers:
-
-1. **Prerequisites**:
-   - Install [Docker](https://www.docker.com/products/docker-desktop)
-   - Install [Visual Studio Code](https://code.visualstudio.com/)
-   - Install the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
-
-2. **Open in DevContainer**:
+1. Install [Docker](https://www.docker.com/products/docker-desktop) and [VS Code](https://code.visualstudio.com/) with the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
+2. Clone and open:
    ```bash
    git clone https://github.com/codepush-io/camunda-test-parallel.git
    cd camunda-test-parallel
    code .
    ```
-   - When prompted, click **"Reopen in Container"**
-   - Alternatively, use the command palette: `Dev Containers: Reopen in Container`
+3. Click **"Reopen in Container"** when prompted
 
-3. **Wait for initialization**: The container will automatically build and configure the development environment with Java 21, Gradle, and all necessary tools.
+### Local Setup
 
-### Local Development Setup
-
-If you prefer to develop without DevContainers:
-
-1. **Install Java 21**:
-   - Download from [Adoptium](https://adoptium.net/) or use your preferred JDK distribution
-   - Verify installation: `java -version`
-
-2. **Clone the repository**:
+1. Install [Java 21](https://adoptium.net/)
+2. Clone and build:
    ```bash
    git clone https://github.com/codepush-io/camunda-test-parallel.git
    cd camunda-test-parallel
-   ```
-
-3. **Build the project**:
-   ```bash
    ./gradlew build
    ```
 
-## Building
-
-### Build the library
+### Running tests
 
 ```bash
-./gradlew build
-```
-
-### Run tests
-
-Run all tests:
-```bash
-./gradlew check
-```
-
-Run only unit tests:
-```bash
-./gradlew test
-```
-
-Run only integration tests:
-```bash
-./gradlew integrationTest
-```
-
-### Generate artifacts
-
-Generate JAR files (including sources and javadoc):
-```bash
-./gradlew assemble
-```
-
-### Clean build
-
-```bash
-./gradlew clean build
-```
-
-## Usage
-
-> **Coming Soon**: Usage examples and documentation will be added as the library features are implemented.
-
-### Basic Example
-
-```java
-// Example usage will be provided once core features are implemented
-```
-
-## Project Structure
-
-```
-camunda-test-parallel/
-├── src/
-│   ├── main/
-│   │   ├── java/              # Library source code
-│   │   └── resources/         # Library resources
-│   ├── test/
-│   │   ├── java/              # Unit tests
-│   │   └── resources/         # Test resources
-│   └── integrationTest/
-│       ├── java/              # Integration tests
-│       └── resources/         # Integration test resources
-├── .devcontainer/             # DevContainer configuration
-├── build.gradle.kts           # Gradle build configuration
-├── settings.gradle.kts        # Gradle settings
-└── README.md
+./gradlew test              # Unit tests
+./gradlew integrationTest   # Integration tests
+./gradlew check             # All tests
 ```
 
 ## Contributing
@@ -147,12 +237,16 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 
 ## Roadmap
 
-- [ ] Core parallel execution infrastructure
-- [ ] Database connection isolation
+- [x] Core parallel execution infrastructure
+- [x] Database schema isolation (PostgreSQL)
+- [x] Spring Boot test annotations (`@ParallelFunctionalTest`)
+- [x] Dynamic WireMock port allocation
+- [x] Context-isolated property injection
+- [x] Schema-aware DataSource wrapper
+- [x] Configurable WireMock port count
 - [ ] Process engine instance isolation
-- [ ] Spring Boot test annotations
-- [ ] Configuration options
-- [ ] Comprehensive documentation
+- [ ] Testcontainers auto-provisioning
+- [ ] Support for databases beyond PostgreSQL
 - [ ] Example projects
 
 ## License
