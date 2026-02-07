@@ -65,4 +65,18 @@ class ParallelFunctionalTestAnnotationTest {
         String[] defaultValue = (String[]) method.getDefaultValue();
         assertThat(defaultValue).contains("spring.main.banner-mode=off");
     }
+
+    @Test
+    void shouldHaveWiremockPortsAttribute() throws NoSuchMethodException {
+        var method = ParallelFunctionalTest.class.getDeclaredMethod("wiremockPorts");
+        assertThat(method).isNotNull();
+        assertThat(method.getReturnType()).isEqualTo(int.class);
+    }
+
+    @Test
+    void shouldHaveDefaultWiremockPortsOfThree() throws Exception {
+        var method = ParallelFunctionalTest.class.getDeclaredMethod("wiremockPorts");
+        int defaultValue = (int) method.getDefaultValue();
+        assertThat(defaultValue).isEqualTo(3);
+    }
 }

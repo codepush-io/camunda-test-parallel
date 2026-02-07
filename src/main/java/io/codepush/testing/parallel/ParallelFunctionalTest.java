@@ -83,4 +83,17 @@ public @interface ParallelFunctionalTest {
      */
     @AliasFor(annotation = SpringBootTest.class, attribute = "properties")
     String[] properties() default {"spring.main.banner-mode=off"};
+
+    /**
+     * Number of WireMock ports to allocate for this test class.
+     *
+     * <p>Each allocated port is injected as a system property with the naming
+     * convention {@code wiremock.port.0}, {@code wiremock.port.1}, etc.</p>
+     *
+     * <p>Set to {@code 0} to disable WireMock port allocation entirely.
+     * Must not be negative.</p>
+     *
+     * @return the number of WireMock ports to allocate (default 3)
+     */
+    int wiremockPorts() default 3;
 }

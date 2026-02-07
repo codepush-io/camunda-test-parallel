@@ -1,13 +1,17 @@
 package io.codepush.testing.parallel.listener;
 
+import io.codepush.testing.parallel.ParallelFunctionalTest;
 import io.codepush.testing.parallel.port.DynamicPortAllocator;
 import io.codepush.testing.parallel.port.SimpleDynamicPortAllocator;
 import io.codepush.testing.parallel.schema.PostgresSchemaIsolationStrategy;
 import io.codepush.testing.parallel.schema.SchemaIsolationStrategy;
+import org.springframework.boot.test.util.TestPropertyValues;
+import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.test.context.TestContext;
 import org.springframework.test.context.support.AbstractTestExecutionListener;
 
 import javax.sql.DataSource;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -56,13 +60,28 @@ public class ParallelTestExecutionListener extends AbstractTestExecutionListener
             DataSource dataSource = getDataSource(testContext);
             schemaStrategy = new PostgresSchemaIsolationStrategy(dataSource);
             schemaName = schemaStrategy.createSchema();
+            // TODO: Wrap dataSource with SchemaAwareDataSource and register it back
+            //  into the ApplicationContext so connections use the isolated schema.
         } catch (Exception e) {
             // DataSource not available - skip schema isolation
             schemaName = "test_schema_unavailable";
         }
 
+        // Determine WireMock port count from annotation
+        int wiremockPortCount = DEFAULT_WIREMOCK_PORT_COUNT;
+        ParallelFunctionalTest annotation = testClass.getAnnotation(ParallelFunctionalTest.class);
+        if (annotation != null) {
+            wiremockPortCount = annotation.wiremockPorts();
+        }
+        if (wiremockPortCount < 0) {
+            throw new IllegalArgumentException(
+                "wiremockPorts must not be negative, but was: " + wiremockPortCount);
+        }
+
         // Allocate dynamic ports
-        List<Integer> allocatedPorts = portAllocator.allocatePorts(DEFAULT_WIREMOCK_PORT_COUNT);
+        List<Integer> allocatedPorts = wiremockPortCount > 0
+            ? portAllocator.allocatePorts(wiremockPortCount)
+            : List.of();
 
         // Store resources for cleanup
         TestResourceContext resourceContext = new TestResourceContext(
@@ -90,14 +109,17 @@ public class ParallelTestExecutionListener extends AbstractTestExecutionListener
     }
 
     private void injectDynamicProperties(TestContext testContext, String schemaName, List<Integer> ports) {
-        // Add schema property
-        System.setProperty(SCHEMA_PROPERTY_NAME, schemaName);
+        ConfigurableEnvironment environment = (ConfigurableEnvironment)
+                testContext.getApplicationContext().getEnvironment();
 
-        // Add port properties
+        List<String> properties = new ArrayList<>();
+        properties.add(SCHEMA_PROPERTY_NAME + "=" + schemaName);
+
         for (int i = 0; i < ports.size(); i++) {
-            String propertyName = WIREMOCK_PORT_PREFIX + i;
-            System.setProperty(propertyName, String.valueOf(ports.get(i)));
+            properties.add(WIREMOCK_PORT_PREFIX + i + "=" + ports.get(i));
         }
+
+        TestPropertyValues.of(properties).applyTo(environment);
     }
 
     private void cleanupResources(TestResourceContext context) {
